@@ -2,12 +2,71 @@
 import pandas as pd
 from scipy.optimize import curve_fit
 import numpy as np
+import scipy
+from scipy import stats
 import matplotlib.pyplot as plt
 
-#loading the dataset and split the X and Y 
-df = pd.read_csv('world data.csv')
-x = df['Year'].values
-y = df['GDP'].values
+def read_world_bank_data(file_path: str) -> tuple:
+    """
+    Reads in a file in the World Bank format and returns a tuple containing the original dataframe and 
+    a transposed version of the dataframe with meaningful column names.
+    
+    Args:
+    file_path (str): The file path of the World Bank data file.
+    
+    Returns:
+    tuple: A tuple containing the original dataframe and transposed dataframe with meaningful column names.
+    """
+    df = pd.read_csv(file_path)
+    transposed_df = df.T
+    transposed_df.columns = transposed_df.iloc[0]
+    transposed_df = transposed_df[1:]
+    return df.head()
+
+new_df = read_world_bank_data('world data.csv')
+
+x = new_df['Year'].values
+y = new_df['GDP'].values
+
+def fit_and_display(x, y, func, init_params, sigma=None, confidence=0.95):
+    """
+    Fit the data and display the result.
+    
+    Parameters:
+    - x (array-like): Independent variable
+    - y (array-like): Dependent variable
+    - func (callable): Function to fit the data to. Should take x as the first argument and the parameters as the rest.
+    - init_params (array-like): Initial guess for the parameters
+    - sigma (array-like, optional): Uncertainties in y. Default is None.
+    - confidence (float, optional): Confidence level for the confidence intervals. Default is 0.95.
+    
+    Returns:
+    - popt (array-like): Optimized parameter values
+    - pcov (2d array-like): Covariance matrix of the parameters
+    """
+    
+    popt, pcov = curve_fit(func, x, y, p0=init_params, sigma=sigma)
+    perr = np.sqrt(np.diag(pcov))
+    
+    plt.figure()
+    plt.scatter(x, y, label="Data")
+    plt.plot(x, func(x, *popt), 'r-', label="Best fit")
+    
+    # Compute confidence intervals
+    n = len(x)
+    p = len(popt)
+    dof = max(0, n - p)
+    student_t = scipy.stats.t.ppf((1 + confidence) / 2, dof)
+    lower = func(x, *(popt - student_t * perr))
+    upper = func(x, *(popt + student_t * perr))
+    plt.fill_between(x, lower, upper, color='gray', alpha=0.5, label="Confidence interval")
+    
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.legend()
+    plt.show()
+    
+    return popt, pcov
 
 #created the linear model to take the x,y,and b
 def linear_model(x, a, b):
@@ -28,6 +87,13 @@ plt.ylabel('GDP')
 plt.title('GDP Fitted with a Linear Model')
 plt.legend()
 plt.show()
+
+def func(x, a, b):
+    return a*x + b
+
+init_params = [1, 1]
+
+fit_and_display(x, y, func, init_params)
 
 #imported the DescrStatsW for the confidence interval
 from statsmodels.stats.api import DescrStatsW
