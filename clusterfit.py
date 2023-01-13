@@ -1,10 +1,8 @@
-#importing neccessarily libraries
-import pandas as pd
-from scipy.optimize import curve_fit
-import numpy as np
-import scipy
-from scipy import stats
+
+import numpy as np 
+import pandas as pd 
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 def read_world_bank_data(file_path: str) -> tuple:
     """
@@ -21,12 +19,131 @@ def read_world_bank_data(file_path: str) -> tuple:
     transposed_df = df.T
     transposed_df.columns = transposed_df.iloc[0]
     transposed_df = transposed_df[1:]
-    return df.head()
+    return df
 
-new_df = read_world_bank_data('world data.csv')
+df = read_world_bank_data('world_data.csv')
 
-x = new_df['Year'].values
-y = new_df['GDP'].values
+df.head()
+
+df['Year'].nunique()
+
+df.shape
+
+# plot a correlation matrix
+fig, ax = plt.subplots(figsize=(10,10))
+sns.heatmap(df.corr(), cmap='RdBu', center=0,ax=ax)
+plt.show()
+
+# bar plot
+plt.figure(figsize=(8, 5))
+sns.set(style="whitegrid")
+plt.title('GDP per countries')
+ax = sns.barplot(
+    data= df,
+    x= 'Country',
+    y= 'GDP in USD')
+
+# set figure size
+plt.figure(figsize=(7, 5))
+sns.set(style="whitegrid")
+# plot using seaborn library
+ax=sns.lineplot(x='Year', y='GDP in USD', hue='Country', style="Country",palette="Set2", markers=True, dashes=False, data=df, linewidth=2.5)
+
+def group_df(feature):
+    # create a new dataframe
+    df_grouped=pd.DataFrame()
+
+    # find average for each country
+    df_grouped['Avg. ' + feature]=df.groupby('Country')[feature].mean()
+
+    # set the index as a column - countries
+    df_grouped['Country']=df_grouped.index
+
+    # drop the index
+    df_grouped.reset_index(drop=True, inplace=True)
+
+    # sort the rows based of Avg Birth rate
+    df_grouped.sort_values('Avg. '+feature, inplace=True, ascending=False)
+
+    print("Avg. " + feature)
+    display(df_grouped)
+    
+    return df_grouped
+
+def plot_bar(df, x_feature, y_feature):
+    # bar plot
+    plt.figure(figsize=(8, 5))
+    sns.set(style="whitegrid")
+    ax = sns.barplot(
+        data= df,
+        x= x_feature,
+        y= "Avg. " + y_feature)
+
+df_birth=group_df('Birth Rate')
+plot_bar(df_birth, 'Country', 'Birth Rate')
+
+print("========================================================")
+df_death=group_df('Death Rate')
+plot_bar(df_death, 'Country', 'Death Rate')
+
+# plot using seaborn library
+plt.title('GDP over years')
+ax=sns.lineplot(x='Year', y='GDP in USD', hue='Country', style="Country",palette="Set2", markers=True, dashes=False, data=df, linewidth=2.5)
+
+# function to extract specific columns from the DFs for India and China
+def form_in_cn_df():
+    # for India
+    indf=df[['Total Population', 'Electric Power Consumption(kWH per capita)', 'Country']]
+    # for China
+    cndf=df[['Total Population', 'Electric Power Consumption(kWH per capita)', 'Country']]
+    # combine the two dataframes
+    in_cn_df=pd.concat([indf, cndf])
+    return in_cn_df
+
+# get the desired data
+in_cn_df=form_in_cn_df()
+print("Few records from the selected features: ")
+display(in_cn_df.head())
+
+# scatter plot
+plt.figure(figsize=(7, 5))
+sns.set(style="whitegrid")
+ax=sns.scatterplot(x='Total Population', y='Electric Power Consumption(kWH per capita)', hue='Country', palette="bright", data=in_cn_df)
+
+# read the columns from the df for Canada
+new_df=df.loc[3:, ['Electric Power Consumption(kWH per capita)','Total Population', 'Year']]
+
+print("First few records of the data: ")
+display(df.head())
+
+# line plot
+plt.figure(figsize=(6, 5))
+sns.set(style="whitegrid")
+plt.title('Total Population over Electric Power Consumption')
+sns.lineplot(x='Total Population', y='Electric Power Consumption(kWH per capita)', palette="colorblind",data=new_df, linewidth=2.5)
+
+# bar plot
+plt.figure(figsize=(8, 5))
+sns.set(style="whitegrid")
+plt.title('Countries by Employment in Agriculture(%)')
+ax = sns.barplot(
+    data= df,
+    x= 'Country',
+    y= 'Employment in Agriculture(%)')
+
+# bar plot
+plt.figure(figsize=(8, 5))
+sns.set(style="whitegrid")
+plt.title('Countries by GDP in USD')
+ax = sns.barplot(
+    data= df,
+    x= 'Country',
+    y= 'GDP in USD')
+
+df.columns
+
+x = df['GDP in USD']
+y = df['Year']
 
 def fit_and_display(x, y, func, init_params, sigma=None, confidence=0.95):
     """
@@ -63,23 +180,32 @@ def fit_and_display(x, y, func, init_params, sigma=None, confidence=0.95):
     
     plt.xlabel('x')
     plt.ylabel('y')
+    plt.title('GDP Fitted with a Linear Model')
     plt.legend()
     plt.show()
     
     return popt, pcov
 
-#created the linear model to take the x,y,and b
+def func(x, a, b):
+    return a*x + b
+
+init_params = [1, 1]
+
+from scipy.optimize import curve_fit
+import numpy as np
+import scipy
+from scipy import stats
+
+fit_and_display(x, y, func, init_params)
+
 def linear_model(x, a, b):
     return a * x + b
-'''
-created the linear model  
-'''
+
 params, cov = curve_fit(linear_model, x, y)
 
 x_pred = np.arange(2022, 2031)
 y_pred = linear_model(x_pred, params[0], params[1])
 
-#plot the result of the observed and predicted data 
 plt.plot(x, y, 'o', label='Observed Data')
 plt.plot(x_pred, y_pred, '-', label='Predicted Data')
 plt.xlabel('Year')
@@ -88,16 +214,7 @@ plt.title('GDP Fitted with a Linear Model')
 plt.legend()
 plt.show()
 
-def func(x, a, b):
-    return a*x + b
-
-init_params = [1, 1]
-
-fit_and_display(x, y, func, init_params)
-
-#imported the DescrStatsW for the confidence interval
 from statsmodels.stats.api import DescrStatsW
-
 # Compute confidence interval with a 99% confidence level
 descr = DescrStatsW(y)
 conf_int = descr.tconfint_mean(alpha=0.01)
@@ -115,37 +232,30 @@ plt.title("The confidence Interval of the Year over GDP")
 plt.legend()
 plt.show()
 
-"""To perform fitting with curve_fit on GDP data, you will need a dataset that contains GDP values for different countries or regions over time. You can then use curve_fit to fit a mathematical model to the data and predict future GDP values.
+df.columns
 
-The confidence interval plotted on the line chart provides a range of values that are likely to contain the true mean of the sample (in this case, the average GDP over the given years). The confidence level indicates the probability that the true mean falls within this range. For example, if the confidence level is 95%, there is a 95% probability that the true mean is within the confidence interval.
-
-
-The confidence interval is fairly narrow, which suggests that the sample data is relatively consistent and the true mean (the average GDP over the given years) is likely to be close to the sample mean. However, you should always keep in mind that the confidence interval is just a statistical estimate, and there is always some uncertainty about the true mean of the sample.
-"""
-
-#loading the dataset for the clustering 
-df = pd.read_csv('world data.csv')
-X = df[['GDP','ratingimpact']]
+X = df[['Total Population', 'Female Population', 'Male Population',
+       'Birth Rate', 'Death Rate', 'Compulsory Education Dur.',
+       'Employment in Industry(%)', 'Employment in Agriculture(%)',
+       'Female Employment in Agriculture(%)',
+       'Female Employment in Industry(%)', 'Unemployment(%)', 'GDP in USD',
+       'National Income per Capita', 'Net income from Abroad',
+       'Agriculture value added(in USD)',
+       'Electric Power Consumption(kWH per capita)',
+       'Renewable Energy Consumption (%)', 'Fossil Fuel Consumption (%)']]
 
 #remove rows with any values that are not finite
 df_new = X[np.isfinite(X).all(1)]
 
-#importing and building a cluster model Kmeans 
 from sklearn.cluster import KMeans
 kmeans = KMeans(n_clusters=3)
 kmeans.fit(df_new)
 
-#plotted the result of the cluster from the Kmeans
 import matplotlib.pyplot as plt
-plt.scatter(df_new['GDP'], df_new['ratingimpact'], c=kmeans.labels_, cmap='viridis')
+
+plt.scatter(df_new['GDP in USD'], df_new['Electric Power Consumption(kWH per capita)'], c=kmeans.labels_, cmap='viridis')
 plt.xlabel('GDP')
-plt.ylabel('ratingimpact')
-plt.title('Countries Clustered by GDP and rating impact')
+plt.ylabel('Electric Power Consumption(kWH per capita)')
+plt.title('Countries Clustered by GDP and Electric Power Consumption(kWH per capita)')
 plt.show()
 
-"""The resulting plot shows two clusters, one with lower GDP and population values and another with higher GDP and population values. This suggests that there is a relationship between GDP and population, where countries with higher GDP tend to have larger populations.
-
-To show an example with python, we can use the KMeans clustering algorithm to group countries into clusters based on certain features. For instance, we can use data on the gross domestic product (GDP), population, and life expectancy of different countries to group them into clusters.
-
-We can also compare countries from different clusters and see how their GDP, population, and life expectancy differ. For example, we can pick a few countries from one cluster and compare them with countries from another cluster or different regions.
-"""
